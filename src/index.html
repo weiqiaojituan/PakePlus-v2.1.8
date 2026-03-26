@@ -1,11 +1,822 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        Hello World
-    </body>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+	<title>多功能料层阻力计算器</title>
+	<style>
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+			font-family: '微软雅黑', sans-serif;
+		}
+
+		body {
+			background: #f0f2f5;
+			padding: 0;
+			margin: 0;
+			min-height: 100vh;
+		}
+
+		/* 顶部提示消息样式 - 固定悬浮 */
+		.top-msg {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			padding: 12px 15px;
+			text-align: center;
+			color: white;
+			font-size: 14px;
+			z-index: 9999;
+			opacity: 0;
+			transition: opacity 0.3s ease;
+			pointer-events: none;
+		}
+		.top-msg.show {
+			opacity: 1;
+		}
+		.top-msg.status {
+			background-color: #43a047;
+		}
+		.top-msg.error {
+			background-color: #e53935;
+		}
+
+		.container {
+			max-width: 1200px;
+			width: 100%;
+			margin: 0 auto;
+			background: white;
+			border-radius: 0 0 10px 10px;
+			box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+			overflow: hidden;
+			padding-top: 45px; /* 给顶部提示留空间 */
+		}
+
+		header {
+			background: #1e88e5;
+			color: white;
+			padding: 18px 15px;
+			text-align: center;
+		}
+		header h1 {
+			font-size: 1.5rem;
+		}
+		header p {
+			font-size: 0.9rem;
+			margin-top: 5px;
+		}
+
+		/* 主选项卡：适配手机横向滚动 */
+		.main-tabs {
+			display: flex;
+			background: #f5f5f5;
+			border-bottom: 2px solid #1e88e5;
+			overflow-x: auto;
+			white-space: nowrap;
+			-webkit-overflow-scrolling: touch;
+		}
+		.main-tab {
+			flex: 0 0 auto;
+			padding: 12px 15px;
+			text-align: center;
+			cursor: pointer;
+			border-bottom: 3px solid transparent;
+			transition: all 0.3s;
+			font-weight: 600;
+			font-size: 0.9rem;
+		}
+		.main-tab.active {
+			border-bottom-color: #1e88e5;
+			color: #1e88e5;
+			background: white;
+		}
+
+		/* 子选项卡：适配手机 */
+		.sub-tabs {
+			display: flex;
+			background: #e3f2fd;
+			border-bottom: 1px solid #bbdefb;
+			overflow-x: auto;
+			white-space: nowrap;
+			-webkit-overflow-scrolling: touch;
+		}
+		.sub-tab {
+			flex: 0 0 auto;
+			padding: 10px 15px;
+			text-align: center;
+			cursor: pointer;
+			border-bottom: 2px solid transparent;
+			transition: all 0.3s;
+			font-size: 0.85rem;
+		}
+		.sub-tab.active {
+			border-bottom-color: #1e88e5;
+			color: #1e88e5;
+			background: white;
+		}
+
+		/* 内容区域 */
+		.calculator-container {
+			display: none;
+			padding: 0;
+		}
+		.calculator-container.active {
+			display: block;
+		}
+
+		.tab-content {
+			padding: 15px;
+			display: none;
+		}
+		.tab-content.active {
+			display: block;
+		}
+
+		/* 输入区域：适配手机 */
+		.input-group {
+			margin-bottom: 15px;
+			padding: 12px;
+			background: #f8fafc;
+			border-radius: 8px;
+			border-left: 4px solid #1e88e5;
+		}
+		.input-row {
+			display: flex;
+			gap: 10px;
+			margin-bottom: 12px;
+			flex-wrap: wrap;
+		}
+		.input-col {
+			flex: 1;
+			min-width: 140px;
+		}
+		label {
+			display: block;
+			margin-bottom: 6px;
+			color: #444;
+			font-weight: 500;
+			font-size: 0.85rem;
+		}
+		input {
+			width: 100%;
+			padding: 10px;
+			border: 1px solid #ddd;
+			border-radius: 6px;
+			font-size: 0.9rem;
+		}
+		input:focus {
+			outline: none;
+			border-color: #1e88e5;
+			box-shadow: 0 0 0 2px rgba(30,136,229,0.2);
+		}
+
+		/* 按钮样式：手机端适配 */
+		button {
+			padding: 10px 20px;
+			background: #1e88e5;
+			color: white;
+			border: none;
+			border-radius: 6px;
+			cursor: pointer;
+			transition: all 0.3s;
+			font-size: 0.9rem;
+		}
+		button:hover {
+			background: #1565c0;
+		}
+		.btn-group {
+			margin-top: 15px;
+			display: flex;
+			gap: 8px;
+			flex-wrap: wrap;
+		}
+		.btn-secondary {
+			background: #78909c;
+		}
+		.btn-secondary:hover {
+			background: #546e7a;
+		}
+		.delete-btn {
+			background: #e53935;
+			padding: 6px 10px;
+			font-size: 0.8rem;
+		}
+		.delete-btn:hover {
+			background: #c62828;
+		}
+
+		/* 结果区域：手机适配 */
+		.result {
+			margin-top: 15px;
+			padding: 15px;
+			background: #e3f2fd;
+			border-radius: 8px;
+			display: none;
+		}
+		.result h2 {
+			margin-bottom: 15px;
+			color: #0d47a1;
+			font-size: 1.2rem;
+		}
+		.result-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+			gap: 10px;
+		}
+		.result-item {
+			background: white;
+			padding: 10px;
+			border-radius: 6px;
+			box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+		}
+		.result-item strong {
+			display: block;
+			color: #0d47a1;
+			margin-bottom: 4px;
+			font-size: 0.8rem;
+		}
+		.result-item .value {
+			font-size: 1rem;
+			font-weight: 600;
+			color: #1e88e5;
+		}
+
+		/* 表格样式：手机横向滚动 */
+		.table-wrap {
+			overflow-x: auto;
+			-webkit-overflow-scrolling: touch;
+			margin: 15px 0;
+		}
+		.pressure-table {
+			width: 100%;
+			min-width: 320px;
+			border-collapse: collapse;
+		}
+		.pressure-table th, .pressure-table td {
+			padding: 8px 10px;
+			text-align: center;
+			border: 1px solid #eee;
+			font-size: 0.85rem;
+		}
+		.pressure-table th {
+			background: #1e88e5;
+			color: white;
+		}
+		.pressure-table tr:nth-child(even) {
+			background: #f8fafc;
+		}
+		.table-actions {
+			margin-bottom: 15px;
+			display: flex;
+			gap: 8px;
+			flex-wrap: wrap;
+		}
+
+		/* 计算器说明 */
+		.calculator-info {
+			background: #e8f5e8;
+			padding: 12px;
+			border-radius: 6px;
+			margin-bottom: 15px;
+			border-left: 4px solid #4caf50;
+		}
+		.calculator-info h3 {
+			color: #2e7d32;
+			margin-bottom: 8px;
+			font-size: 1rem;
+		}
+		.calculator-info p {
+			font-size: 0.85rem;
+			color: #333;
+		}
+
+		/* 版权信息 */
+		.copyright {
+			padding: 12px;
+			text-align: center;
+			color: #666;
+			font-size: 0.8rem;
+			border-top: 1px solid #eee;
+			margin-top: 20px;
+		}
+	</style>
+</head>
+<body>
+	<div class="top-msg" id="globalMsg"></div>
+
+	<div class="container">
+		<header>
+			<h1>料层阻力计算器</h1>
+			<p></p>
+		</header>
+
+		<div class="main-tabs">
+			<div class="main-tab active" data-calculator="flyash">飞灰侧计算</div>
+			<div class="main-tab" data-calculator="coal">粉煤气化计算</div>
+			<div class="main-tab" data-calculator="pressure">压差温度计算</div>
+		</div>
+
+		<div class="calculator-container active" id="flyash-calculator">
+			<div class="calculator-info">
+				<h3></h3>
+				<p></p>
+			</div>
+
+			<div class="sub-tabs">
+				<div class="sub-tab active" data-tab="flyash-calc">阻力计算</div>
+				<div class="sub-tab" data-tab="flyash-data">压差数据管理</div>
+			</div>
+
+			<div class="tab-content active" id="flyash-calc-tab">
+				<div class="input-group">
+					<div class="input-row">
+						<div class="input-col">
+							<label>一次蒸汽量（kg/h）</label>
+							<input type="number" id="flyash-steam1" placeholder="默认0">
+						</div>
+						<div class="input-col">
+							<label>二次蒸汽量（kg/h）</label>
+							<input type="number" id="flyash-steam2" placeholder="默认0">
+						</div>
+					</div>
+					<div class="input-row">
+						<div class="input-col">
+							<label>氧气/空气（Nm³/h）</label>
+							<input type="number" id="flyash-air1" placeholder="无则填0">
+						</div>
+						<div class="input-col">
+							<label>额外风量2（Nm³/h）</label>
+							<input type="number" id="flyash-air2" placeholder="无则填0">
+						</div>
+					</div>
+				</div>
+				<div class="input-group">
+					<div class="input-row">
+						<div class="input-col">
+							<label>热风管温度（℃）</label>
+							<input type="number" id="flyash-temp" placeholder="请输入数值">
+						</div>
+						<div class="input-col">
+							<label>热风管压力（kPa）</label>
+							<input type="number" id="flyash-hotP" placeholder="请输入数值">
+						</div>
+						<div class="input-col">
+							<label>炉顶压力（kPa）</label>
+							<input type="number" id="flyash-topP" placeholder="请输入数值">
+						</div>
+					</div>
+				</div>
+				<div class="btn-group">
+					<button onclick="calculateResistance('flyash')">开始计算</button>
+					<button class="btn-secondary" onclick="resetCalc('flyash')">重置参数</button>
+				</div>
+				<div class="result" id="flyash-result">
+					<h2>飞灰侧计算结果</h2>
+					<div class="result-grid">
+						<div class="result-item"><strong>总蒸汽量</strong><div class="value" id="flyash-totalSteam">0 kg/h</div></div>
+						<div class="result-item"><strong>总额外风量</strong><div class="value" id="flyash-totalAir">0 Nm³/h</div></div>
+						<div class="result-item"><strong>折算总风量</strong><div class="value" id="flyash-airVolume">0 Nm³/h</div></div>
+						<div class="result-item"><strong>风帽阻力</strong><div class="value" id="flyash-capRes">0 kPa</div></div>
+						<div class="result-item"><strong>温度系数</strong><div class="value" id="flyash-tempCoeff">0</div></div>
+						<div class="result-item"><strong>料层阻力</strong><div class="value" id="flyash-layerRes">0 kPa</div></div>
+					</div>
+				</div>
+			</div>
+
+			<div class="tab-content" id="flyash-data-tab">
+				<h2>压差数据管理（飞灰侧）</h2>
+				<p>风量与对应压差的映射关系，用于插值计算风帽阻力</p>
+				<div class="table-actions">
+					<button onclick="addRow('flyash')">新增行</button>
+					<button class="btn-secondary" onclick="saveData('flyash')">保存数据</button>
+					<button class="btn-secondary" onclick="loadDefault('flyash')">恢复默认</button>
+				</div>
+				<div class="table-wrap">
+					<table class="pressure-table" id="flyash-table">
+						<thead><tr><th>风量（Nm³/h）</th><th>压差（kPa）</th><th>操作</th></tr></thead>
+						<tbody></tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
+		<div class="calculator-container" id="coal-calculator">
+			<div class="calculator-info">
+				<h3></h3>
+				<p></p>
+			</div>
+
+			<div class="sub-tabs">
+				<div class="sub-tab active" data-tab="coal-calc">阻力计算</div>
+				<div class="sub-tab" data-tab="coal-data">压差数据管理</div>
+			</div>
+
+			<div class="tab-content active" id="coal-calc-tab">
+				<div class="input-group">
+					<div class="input-row">
+						<div class="input-col">
+							<label>一次蒸汽量（kg/h）</label>
+							<input type="number" id="coal-steam1" placeholder="默认0">
+						</div>
+						<div class="input-col">
+							<label>二次蒸汽量（kg/h）</label>
+							<input type="number" id="coal-steam2" placeholder="默认0">
+						</div>
+					</div>
+					<div class="input-row">
+						<div class="input-col">
+							<label>氧气/空气（Nm³/h）</label>
+							<input type="number" id="coal-air1" placeholder="无则填0">
+						</div>
+						<div class="input-col">
+							<label>额外风量2（Nm³/h）</label>
+							<input type="number" id="coal-air2" placeholder="无则填0">
+						</div>
+					</div>
+				</div>
+				<div class="input-group">
+					<div class="input-row">
+						<div class="input-col">
+							<label>热风管温度（℃）</label>
+							<input type="number" id="coal-temp" placeholder="请输入数值">
+						</div>
+						<div class="input-col">
+							<label>热风管压力（kPa）</label>
+							<input type="number" id="coal-hotP" placeholder="请输入数值">
+						</div>
+						<div class="input-col">
+							<label>炉顶压力（kPa）</label>
+							<input type="number" id="coal-topP" placeholder="请输入数值">
+						</div>
+					</div>
+				</div>
+				<div class="btn-group">
+					<button onclick="calculateResistance('coal')">开始计算</button>
+					<button class="btn-secondary" onclick="resetCalc('coal')">重置参数</button>
+				</div>
+				<div class="result" id="coal-result">
+					<h2>粉煤气化计算结果</h2>
+					<div class="result-grid">
+						<div class="result-item"><strong>总蒸汽量</strong><div class="value" id="coal-totalSteam">0 kg/h</div></div>
+						<div class="result-item"><strong>总额外风量</strong><div class="value" id="coal-totalAir">0 Nm³/h</div></div>
+						<div class="result-item"><strong>折算总风量</strong><div class="value" id="coal-airVolume">0 Nm³/h</div></div>
+						<div class="result-item"><strong>风帽阻力</strong><div class="value" id="coal-capRes">0 kPa</div></div>
+						<div class="result-item"><strong>温度系数</strong><div class="value" id="coal-tempCoeff">0</div></div>
+						<div class="result-item"><strong>料层阻力</strong><div class="value" id="coal-layerRes">0 kPa</div></div>
+					</div>
+				</div>
+			</div>
+
+			<div class="tab-content" id="coal-data-tab">
+				<h2>压差数据管理（粉煤气化）</h2>
+				<p>风量与对应压差的映射关系，用于插值计算风帽阻力</p>
+				<div class="table-actions">
+					<button onclick="addRow('coal')">新增行</button>
+					<button class="btn-secondary" onclick="saveData('coal')">保存数据</button>
+					<button class="btn-secondary" onclick="loadDefault('coal')">恢复默认</button>
+				</div>
+				<div class="table-wrap">
+					<table class="pressure-table" id="coal-table">
+						<thead><tr><th>风量（Nm³/h）</th><th>压差（kPa）</th><th>操作</th></tr></thead>
+						<tbody></tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
+		<div class="calculator-container" id="pressure-calculator">
+			<div class="calculator-info">
+				<h3></h3>
+				<p></p>
+			</div>
+
+			<div class="sub-tabs">
+				<div class="sub-tab active" data-tab="pressure-calc">压差计算</div>
+				<div class="sub-tab" data-tab="pressure-data">压差数据管理</div>
+			</div>
+
+			<div class="tab-content active" id="pressure-calc-tab">
+				<div class="input-group">
+					<div class="input-row">
+						<div class="input-col">
+							<label>总风量（Nm³/h）</label>
+							<input type="number" id="pressure-airVol" placeholder="请输入数值">
+						</div>
+						<div class="input-col">
+							<label>热风管温度（℃）</label>
+							<input type="number" id="pressure-temp" placeholder="请输入数值">
+						</div>
+					</div>
+				</div>
+				<div class="btn-group">
+					<button onclick="calculatePressure()">开始计算</button>
+					<button class="btn-secondary" onclick="resetCalc('pressure')">重置参数</button>
+				</div>
+				<div class="result" id="pressure-result">
+					<h2>压差温度计算结果</h2>
+					<div class="result-grid">
+						<div class="result-item"><strong>风帽阻力</strong><div class="value" id="pressure-capRes">0 kPa</div></div>
+						<div class="result-item"><strong>温度系数</strong><div class="value" id="pressure-tempCoeff">0</div></div>
+					</div>
+				</div>
+			</div>
+
+			<div class="tab-content" id="pressure-data-tab">
+				<h2>压差数据管理（压差温度）</h2>
+				<p>风量与对应压差的映射关系，用于插值计算风帽阻力</p>
+				<div class="table-actions">
+					<button onclick="addRow('pressure')">新增行</button>
+					<button class="btn-secondary" onclick="saveData('pressure')">保存数据</button>
+					<button class="btn-secondary" onclick="loadDefault('pressure')">恢复默认</button>
+				</div>
+				<div class="table-wrap">
+					<table class="pressure-table" id="pressure-table">
+						<thead><tr><th>风量（Nm³/h）</th><th>压差（kPa）</th><th>操作</th></tr></thead>
+						<tbody></tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
+		<div class="copyright">
+			计算数据仅供参考 | 制作人：刘飞
+		</div>
+	</div>
+
+	<script>
+		// 各模块默认压差数据
+		const defaultData = {
+			flyash: {
+				3780: 0.32, 5670: 0.7, 7560: 1.21, 9450: 1.86, 11340: 2.63,
+				13230: 3.55, 15120: 4.62, 17010: 5.77, 18900: 7.03
+			},
+			coal: {
+				3780: 0.2, 5670: 0.4, 7560: 0.27, 9450: 1, 11340: 1.2,
+				13230: 1.7, 15120: 2.2, 17010: 2.7, 18900: 3.3, 20790: 3.9,
+				22680: 4.6, 24570: 5.3, 26460: 6.2, 28350: 7.0, 30240: 8.0,
+				32130: 9.0, 34020: 10.1, 35910: 11.3, 37210: 12.1, 38650: 12.9,
+				39690: 13.2, 41580: 14.3, 42470: 15.4, 43660: 16.5, 44850: 17.6, 46040: 18.7
+			},
+			pressure: {
+				3780: 0.2, 5670: 0.4, 7560: 0.27, 9450: 1, 11340: 1.2,
+				13230: 1.7, 15120: 2.2, 17010: 2.7, 18900: 3.3, 20790: 3.9,
+				22680: 4.6, 24570: 5.3, 26460: 6.2, 28350: 7.0, 30240: 8.0,
+				32130: 9.0, 34020: 10.1, 35910: 11.3, 37210: 12.1, 38650: 12.9,
+				39690: 13.2, 41580: 14.3, 42470: 15.4, 43660: 16.5, 44850: 17.6, 46040: 18.7
+			}
+		};
+
+		// 当前各模块数据（优先加载本地存储）
+		let currentData = {};
+
+		// 页面初始化
+		window.onload = function() {
+			bindMainTabs();
+			Object.keys(defaultData).forEach(type => {
+				loadData(type);
+				renderTable(type);
+			});
+			loadLastCalc('flyash');
+		};
+
+		// 绑定主选项卡切换事件
+		function bindMainTabs() {
+			const mainTabs = document.querySelectorAll('.main-tab');
+			mainTabs.forEach(tab => {
+				tab.addEventListener('click', () => {
+					const type = tab.dataset.calculator;
+					mainTabs.forEach(t => t.classList.remove('active'));
+					tab.classList.add('active');
+					document.querySelectorAll('.calculator-container').forEach(cont => {
+						cont.classList.remove('active');
+					});
+					document.getElementById(`${type}-calculator`).classList.add('active');
+					loadLastCalc(type);
+				});
+			});
+
+			document.querySelectorAll('.sub-tab').forEach(tab => {
+				tab.addEventListener('click', () => {
+					const type = tab.closest('.calculator-container').id.split('-')[0];
+					const tabName = tab.dataset.tab;
+					tab.parentElement.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+					tab.classList.add('active');
+					document.querySelectorAll(`#${type}-calculator .tab-content`).forEach(cont => {
+						cont.classList.remove('active');
+					});
+					document.getElementById(`${tabName}-tab`).classList.add('active');
+				});
+			});
+		}
+
+		// 加载模块数据
+		function loadData(type) {
+			const saved = localStorage.getItem(`${type}_pressureData`);
+			currentData[type] = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultData[type]));
+		}
+
+		// 渲染数据表格
+		function renderTable(type) {
+			const tbody = document.querySelector(`#${type}-table tbody`);
+			tbody.innerHTML = '';
+			const sortedVol = Object.keys(currentData[type]).map(Number).sort((a,b)=>a-b);
+			sortedVol.forEach(vol => {
+				const tr = document.createElement('tr');
+				tr.innerHTML = `
+					<td><input type="number" value="${vol}" data-original="${vol}" class="vol-input"></td>
+					<td><input type="number" step="0.01" value="${currentData[type][vol]}" class="pres-input"></td>
+					<td><button class="delete-btn" onclick="deleteRow(this, '${type}')">删除</button></td>
+				`;
+				tbody.appendChild(tr);
+			});
+		}
+
+		// 新增数据行
+		function addRow(type) {
+			const tbody = document.querySelector(`#${type}-table tbody`);
+			const vols = Object.keys(currentData[type]).map(Number);
+			const newVol = vols.length ? Math.max(...vols) + 1890 : 1890;
+			const tr = document.createElement('tr');
+			tr.innerHTML = `
+				<td><input type="number" value="${newVol}" data-original="" class="vol-input"></td>
+				<td><input type="number" step="0.01" value="0" class="pres-input"></td>
+				<td><button class="delete-btn" onclick="deleteRow(this, '${type}')">删除</button></td>
+			`;
+			tbody.appendChild(tr);
+		}
+
+		// 删除数据行
+		function deleteRow(btn, type) {
+			const tr = btn.closest('tr');
+			const originalVol = tr.querySelector('.vol-input').dataset.original;
+			if (originalVol) delete currentData[type][originalVol];
+			tr.remove();
+		}
+
+		// 保存数据
+		function saveData(type) {
+			const inputs = document.querySelectorAll(`#${type}-table .vol-input, #${type}-table .pres-input`);
+			const newData = {};
+			for(let i=0; i<inputs.length; i+=2) {
+				const vol = parseFloat(inputs[i].value);
+				const pres = parseFloat(inputs[i+1].value);
+				if (!isNaN(vol) && vol>0 && !isNaN(pres)) newData[vol] = pres;
+			}
+			currentData[type] = newData;
+			localStorage.setItem(`${type}_pressureData`, JSON.stringify(newData));
+			renderTable(type);
+			showTopMsg('数据保存成功！', 'status');
+		}
+
+		// 恢复默认数据
+		function loadDefault(type) {
+			if (confirm('确认恢复默认数据？')) {
+				currentData[type] = JSON.parse(JSON.stringify(defaultData[type]));
+				localStorage.setItem(`${type}_pressureData`, JSON.stringify(currentData[type]));
+				renderTable(type);
+				showTopMsg('已恢复默认数据！', 'status');
+			}
+		}
+
+		// 通用阻力计算函数（飞灰/粉煤）
+		function calculateResistance(type) {
+			// 修改逻辑：不限制为0，且不输入默认为0
+			const steam1 = parseFloat(document.getElementById(`${type}-steam1`).value) || 0;
+			const steam2 = parseFloat(document.getElementById(`${type}-steam2`).value) || 0;
+			const air1 = parseFloat(document.getElementById(`${type}-air1`).value) || 0;
+			const air2 = parseFloat(document.getElementById(`${type}-air2`).value) || 0;
+			const temp = parseFloat(document.getElementById(`${type}-temp`).value) || 0;
+			const hotP = parseFloat(document.getElementById(`${type}-hotP`).value) || 0;
+			const topP = parseFloat(document.getElementById(`${type}-topP`).value) || 0;
+
+			// 仅保留压力输入的有效性校验
+			if (hotP <= 0 || topP <= 0) { showTopMsg('压力值必须大于0！', 'error'); return; }
+
+			const totalSteam = steam1 + steam2;
+			const totalAir = air1 + air2;
+			
+			// 核心逻辑保持不变，但蒸汽量现在可以为0
+			const airVolume = (totalSteam / 0.804) + totalAir; 
+			const tempCoeff = (temp + 273.15) / 273.15;
+			const capRes = interpolateRes(type, airVolume);
+			const layerRes = hotP - topP - capRes * tempCoeff;
+
+			document.getElementById(`${type}-totalSteam`).textContent = totalSteam.toFixed(2) + ' kg/h';
+			document.getElementById(`${type}-totalAir`).textContent = totalAir.toFixed(2) + ' Nm³/h';
+			document.getElementById(`${type}-airVolume`).textContent = airVolume.toFixed(2) + ' Nm³/h';
+			document.getElementById(`${type}-capRes`).textContent = capRes.toFixed(4) + ' kPa';
+			document.getElementById(`${type}-tempCoeff`).textContent = tempCoeff.toFixed(4);
+			document.getElementById(`${type}-layerRes`).textContent = layerRes.toFixed(4) + ' kPa';
+			document.getElementById(`${type}-result`).style.display = 'block';
+
+			saveLastCalc(type, {
+				steam1, steam2, air1, air2, temp, hotP, topP,
+				totalSteam, totalAir, airVolume, capRes, tempCoeff, layerRes
+			});
+		}
+
+		// 压差温度计算函数
+		function calculatePressure() {
+			const airVol = parseFloat(document.getElementById('pressure-airVol').value) || 0;
+			const temp = parseFloat(document.getElementById('pressure-temp').value) || 0;
+
+			if (airVol <= 0) { showTopMsg('总风量必须大于0！', 'error'); return; }
+
+			const capRes = interpolateRes('pressure', airVol);
+			const tempCoeff = (temp + 273.15) / 273.15;
+
+			document.getElementById('pressure-capRes').textContent = capRes.toFixed(4) + ' kPa';
+			document.getElementById('pressure-tempCoeff').textContent = tempCoeff.toFixed(4);
+			document.getElementById('pressure-result').style.display = 'block';
+
+			saveLastCalc('pressure', { airVol, temp, capRes, tempCoeff });
+		}
+
+		// 插值计算风帽阻力
+		function interpolateRes(type, airVol) {
+			const sortedVol = Object.keys(currentData[type]).map(Number).sort((a,b)=>a-b);
+			if (sortedVol.length === 0) return 0;
+
+			if (airVol <= sortedVol[0]) return currentData[type][sortedVol[0]];
+			if (airVol >= sortedVol[sortedVol.length-1]) return currentData[type][sortedVol[sortedVol.length-1]];
+
+			for(let i=0; i<sortedVol.length; i++) {
+				if (sortedVol[i] >= airVol) {
+					const lower = sortedVol[i-1];
+					const upper = sortedVol[i];
+					const lowerP = currentData[type][lower];
+					const upperP = currentData[type][upper];
+					return lowerP + (airVol - lower) * (upperP - lowerP) / (upper - lower);
+				}
+			}
+			return 0;
+		}
+
+		// 保存上次计算记录
+		function saveLastCalc(type, data) {
+			localStorage.setItem(`${type}_lastCalc`, JSON.stringify(data));
+		}
+
+		// 加载上次计算记录
+		function loadLastCalc(type) {
+			const saved = localStorage.getItem(`${type}_lastCalc`);
+			if (!saved) return;
+			const data = JSON.parse(saved);
+			if (type !== 'pressure') {
+				document.getElementById(`${type}-steam1`).value = data.steam1 || '';
+				document.getElementById(`${type}-steam2`).value = data.steam2 || '';
+				document.getElementById(`${type}-air1`).value = data.air1 || '';
+				document.getElementById(`${type}-air2`).value = data.air2 || '';
+				document.getElementById(`${type}-temp`).value = data.temp || '';
+				document.getElementById(`${type}-hotP`).value = data.hotP || '';
+				document.getElementById(`${type}-topP`).value = data.topP || '';
+				document.getElementById(`${type}-totalSteam`).textContent = (data.totalSteam || 0).toFixed(2) + ' kg/h';
+				document.getElementById(`${type}-totalAir`).textContent = (data.totalAir || 0).toFixed(2) + ' Nm³/h';
+				document.getElementById(`${type}-airVolume`).textContent = (data.airVolume || 0).toFixed(2) + ' Nm³/h';
+				document.getElementById(`${type}-capRes`).textContent = (data.capRes || 0).toFixed(4) + ' kPa';
+				document.getElementById(`${type}-tempCoeff`).textContent = (data.tempCoeff || 0).toFixed(4);
+				document.getElementById(`${type}-layerRes`).textContent = (data.layerRes || 0).toFixed(4) + ' kPa';
+				document.getElementById(`${type}-result`).style.display = 'block';
+			} else {
+				document.getElementById('pressure-airVol').value = data.airVol || '';
+				document.getElementById('pressure-temp').value = data.temp || '';
+				document.getElementById('pressure-capRes').textContent = (data.capRes || 0).toFixed(4) + ' kPa';
+				document.getElementById('pressure-tempCoeff').textContent = (data.tempCoeff || 0).toFixed(4);
+				document.getElementById('pressure-result').style.display = 'block';
+			}
+		}
+
+		// 重置计算器参数
+		function resetCalc(type) {
+			if (confirm('确认重置所有参数？')) {
+				if (type !== 'pressure') {
+					document.getElementById(`${type}-steam1`).value = '';
+					document.getElementById(`${type}-steam2`).value = '';
+					document.getElementById(`${type}-air1`).value = '';
+					document.getElementById(`${type}-air2`).value = '';
+					document.getElementById(`${type}-temp`).value = '';
+					document.getElementById(`${type}-hotP`).value = '';
+					document.getElementById(`${type}-topP`).value = '';
+				} else {
+					document.getElementById('pressure-airVol').value = '';
+					document.getElementById('pressure-temp').value = '';
+				}
+				document.getElementById(`${type}-result`).style.display = 'none';
+			}
+		}
+
+		// 顶部提示消息显示函数
+		function showTopMsg(msg, msgType) {
+			const msgElem = document.getElementById('globalMsg');
+			msgElem.textContent = msg;
+			msgElem.className = `top-msg ${msgType} show`;
+			setTimeout(() => {
+				msgElem.className = 'top-msg';
+			}, 3000);
+		}
+	</script>
+</body>
 </html>
